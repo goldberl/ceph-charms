@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from unittest.mock import patch, MagicMock, ANY, call
 
 import ceph_radosgw_context as context
@@ -734,6 +735,29 @@ class ApacheContextTest(CharmTestCase):
             ctxt['endpoints'],
         )
 
+    @patch('ceph_radosgw_context.context.check_call')
+    def test_enable_modules_includes_remoteip(self, mock_check_call):
+        context.ApacheSSLContext().enable_modules()
+
+        self.assertEqual(
+            [
+                call(['a2enmod', 'ssl', 'proxy', 'proxy_http', 'headers']),
+                call(['a2enmod', 'remoteip']),
+            ],
+            mock_check_call.call_args_list,
+        )
+
+    def test_frontend_template_uses_x_forwarded_for(self):
+        template_path = os.path.join(
+            os.path.dirname(__file__), '..', 'templates',
+            'openstack_https_frontend.conf',
+        )
+        with open(template_path) as handle:
+            conf = handle.read()
+
+        self.assertIn('RemoteIPHeader X-Forwarded-For', conf)
+        self.assertIn('RemoteIPTrustedProxy 127.0.0.1', conf)
+
     @patch('ceph_radosgw_context.context.ApacheSSLContext.configure_cert')
     def test_configure_cert_expands_public_hostnames(
             self, mock_configure_cert):
@@ -757,7 +781,9 @@ class ApacheContextTest(CharmTestCase):
 
         mock_configure_cert.assert_called_once_with('10.0.0.10')
 
-    def test_certificate_relation_takes_precedence_over_static_cert(self):
+    @patch('ceph_radosgw_context.context.check_call')
+    def test_certificate_relation_takes_precedence_over_static_cert(
+            self, mock_check_call):
         self.test_config.set('ssl_cert', 'certificate')
         self.test_config.set('ssl_key', 'private-key')
         self.test_config.set('virtual-hosted-bucket-enabled', True)

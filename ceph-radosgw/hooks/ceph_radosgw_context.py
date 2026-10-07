@@ -90,6 +90,11 @@ class ApacheSSLContext(context.ApacheSSLContext):
     interfaces = ['https']
     service_namespace = 'ceph-radosgw'
 
+    def enable_modules(self):
+        super(ApacheSSLContext, self).enable_modules()
+        # remoteip is for proxy protocol
+        context.check_call(['a2enmod', 'remoteip'])
+
     def configure_cert(self, cn=None):
         """Install public-hostname certificates under per-hostname names."""
         hostnames = config('os-public-hostname')

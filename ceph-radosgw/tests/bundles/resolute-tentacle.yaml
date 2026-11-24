@@ -1,5 +1,5 @@
 options:
-  source: &source distro
+  source: &source ppa:lmlogiudice/ceph-tentacle-updates
 
 default-base: ubuntu@26.04
 
